@@ -189,6 +189,11 @@ export function useMonitoring({
     };
 
     const handleBlur = () => {
+      // Ignore blur events caused by interacting with the exam iframe itself
+      if (document.activeElement?.tagName === 'IFRAME') {
+        return;
+      }
+      
       if (settings.monitorFocus && document.visibilityState === 'visible') {
         // Only log focus loss if we didn't already log a tab switch
         logEvent('focus_loss', 'Lost window focus (clicked outside)');

@@ -10,7 +10,7 @@
  * 6. Set a trigger (Clock icon on the left) to run the `syncExamGuardData` function every 2 hours.
  */
 
-const EXAMGUARD_URL = 'YOUR_NEXTJS_APP_URL'; // Replace this with your Vercel or deployed app URL!
+const EXAMGUARD_URL = 'https://exam-guard-v1-0.vercel.app'; // Replace this with your Vercel or deployed app URL!
 const CRON_SECRET = 'examguard_backup_secret_2026'; // Auto-injected from your .env.local
 
 function setupAndRun() {
