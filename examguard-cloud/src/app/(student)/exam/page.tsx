@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useExamInfo } from '@/lib/hooks/useExamInfo';
 import { useSession } from '@/lib/hooks/useSession';
 import { ExamInfoScreen } from '@/components/student/ExamInfoScreen';
@@ -39,11 +40,17 @@ function LoadingSpinner() {
 
 export default function ExamPage() {
   const { forms, settings, institutionName, loading: infoLoading, error: infoError } = useExamInfo();
-  const session = useSession(settings);
+  const session = useSession(settings, forms);
+  const [isMobile, setIsMobile] = useState(false);
 
-  // Mobile detection (basic: check viewport width via CSS would be better, but
-  // for exam blocking we need JS to prevent any interaction)
-  if (typeof window !== 'undefined' && window.innerWidth < 768) {
+  // Mobile detection - moved to useEffect to prevent SSR hydration mismatch
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      setIsMobile(true);
+    }
+  }, []);
+
+  if (isMobile) {
     return <MobileBlock />;
   }
 
@@ -100,6 +107,7 @@ export default function ExamPage() {
           settings={settings}
           onReady={session.startSession}
           loading={session.loading}
+          error={session.error}
         />
       ) : null;
 
@@ -110,6 +118,8 @@ export default function ExamPage() {
           score={session.score}
           violations={session.violations}
           endTime={session.selectedForm?.endTime ?? null}
+          timeLimitMinutes={session.selectedForm?.timeLimitMinutes ?? null}
+          startedAt={session.startedAt}
           showScore={settings?.showScore ?? true}
           onSubmit={session.endSession}
           loading={session.loading}

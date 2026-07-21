@@ -11,7 +11,7 @@ import {
 } from '@tanstack/react-table';
 import { getScoreSeverity } from '@/lib/utils/constants';
 import type { Database } from '@/lib/supabase/types';
-import { ShieldAlert, ShieldCheck, ShieldBan } from 'lucide-react';
+import { ShieldAlert, ShieldCheck, ShieldBan, RotateCcw } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
 type SessionRow = Database['public']['Tables']['sessions']['Row'];
@@ -21,10 +21,11 @@ const columnHelper = createColumnHelper<SessionRow>();
 interface Props {
   data: SessionRow[];
   onTerminateSession: (sessionId: string) => void;
+  onAllowRetake: (sessionId: string) => void;
   loading: boolean;
 }
 
-export function SessionsGrid({ data, onTerminateSession, loading }: Props) {
+export function SessionsGrid({ data, onTerminateSession, onAllowRetake, loading }: Props) {
   const [sorting, setSorting] = useState<SortingState>([
     { id: 'score', desc: false } // Default sort by lowest score first
   ]);
@@ -83,13 +84,41 @@ export function SessionsGrid({ data, onTerminateSession, loading }: Props) {
       id: 'actions',
       cell: info => {
         const session = info.row.original;
-        if (session.status !== 'ACTIVE') return null;
         
+        if (session.status === 'ACTIVE') {
+          return (
+            <button
+              onClick={() => {
+                if (confirm(`Are you sure you want to terminate ${session.email}'s exam?`)) {
+                  onTerminateSession(session.id);
+                }
+              }}
+              className="focus-ring"
+              style={{
+                padding: '6px 12px',
+                fontSize: 12,
+                fontWeight: 600,
+                color: 'var(--danger)',
+                background: 'transparent',
+                border: '1px solid var(--danger)',
+                borderRadius: 'var(--radius-sm)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6
+              }}
+            >
+              <ShieldAlert size={14} />
+              Terminate
+            </button>
+          );
+        }
+
         return (
           <button
             onClick={() => {
-              if (confirm(`Are you sure you want to terminate ${session.email}'s exam?`)) {
-                onTerminateSession(session.id);
+              if (confirm(`Are you sure you want to allow ${session.email} to retake the exam? This will delete their current submission.`)) {
+                onAllowRetake(session.id);
               }
             }}
             className="focus-ring"
@@ -97,9 +126,9 @@ export function SessionsGrid({ data, onTerminateSession, loading }: Props) {
               padding: '6px 12px',
               fontSize: 12,
               fontWeight: 600,
-              color: 'var(--danger)',
+              color: 'var(--brand)',
               background: 'transparent',
-              border: '1px solid var(--danger)',
+              border: '1px solid var(--brand)',
               borderRadius: 'var(--radius-sm)',
               cursor: 'pointer',
               display: 'flex',
@@ -107,8 +136,8 @@ export function SessionsGrid({ data, onTerminateSession, loading }: Props) {
               gap: 6
             }}
           >
-            <ShieldAlert size={14} />
-            Terminate
+            <RotateCcw size={14} />
+            Allow Retake
           </button>
         );
       }

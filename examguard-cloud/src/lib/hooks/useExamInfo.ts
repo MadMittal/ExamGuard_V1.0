@@ -31,6 +31,7 @@ function formToExamInfo(form: FormRow): ExamInfo {
     emailField: form.email_field,
     startTime: form.start_time,
     endTime: form.end_time,
+    timeLimitMinutes: form.time_limit_minutes ?? null,
     isOpen: status === 'Active',
     statusLabel: status,
   };

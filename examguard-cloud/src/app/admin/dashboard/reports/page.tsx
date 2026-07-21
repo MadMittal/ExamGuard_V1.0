@@ -6,6 +6,7 @@ import type { Database } from '@/lib/supabase/types';
 import { format } from 'date-fns';
 import { Download, FileText, Search, Filter } from 'lucide-react';
 import { toast } from 'sonner';
+import { ReportDetailsModal } from '@/components/admin/ReportDetailsModal';
 
 type SessionRow = Database['public']['Tables']['sessions']['Row'];
 type FormRow = Database['public']['Tables']['forms']['Row'];
@@ -14,6 +15,7 @@ export default function ReportsPage() {
   const [sessions, setSessions] = useState<SessionRow[]>([]);
   const [forms, setForms] = useState<FormRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   
   // Filters
   const [selectedFormId, setSelectedFormId] = useState<string>('');
@@ -213,7 +215,13 @@ export default function ReportsPage() {
                 <tr><td colSpan={5} style={{ padding: 24, textAlign: 'center', color: 'var(--muted)' }}>No completed exams found.</td></tr>
               ) : (
                 filteredSessions.map(session => (
-                  <tr key={session.id} style={{ borderBottom: '1px solid var(--line)' }}>
+                  <tr 
+                    key={session.id} 
+                    style={{ borderBottom: '1px solid var(--line)', cursor: 'pointer', transition: 'background 0.2s' }}
+                    onClick={() => setSelectedSessionId(session.id)}
+                    onMouseEnter={e => e.currentTarget.style.background = 'var(--soft)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  >
                     <td style={{ padding: '16px' }}>
                       <div style={{ fontWeight: 600, color: 'var(--ink)' }}>{session.student_name || 'Anonymous'}</div>
                       <div style={{ fontSize: 13, color: 'var(--muted)' }}>{session.email || '-'}</div>
@@ -256,6 +264,13 @@ export default function ReportsPage() {
           </table>
         </div>
       </div>
+      
+      {selectedSessionId && (
+        <ReportDetailsModal 
+          sessionId={selectedSessionId} 
+          onClose={() => setSelectedSessionId(null)} 
+        />
+      )}
     </div>
   );
 }

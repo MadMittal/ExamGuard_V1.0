@@ -53,6 +53,8 @@ export interface FormRow {
   end_time: string | null;
   active: boolean;
   webcam_override: string;
+  time_limit_minutes: number | null;
+  allowed_emails: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -165,6 +167,7 @@ export interface SessionConflictResult {
   message: string;
   session_id?: string;
   token?: string;
+  started_at?: string;
   score?: number;
 }
 

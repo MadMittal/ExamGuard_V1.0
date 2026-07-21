@@ -62,7 +62,7 @@ export function useMonitoring({
     if (!tokenRef.current || !idRef.current || isTerminatedRef.current) return;
 
     // 1. Calculate new score
-    const deduction = DEDUCTIONS[type] ?? 0;
+    const deduction = settings?.deductions?.[type as keyof typeof settings.deductions] ?? DEDUCTIONS[type] ?? 0;
     const newScore = Math.max(0, scoreRef.current - deduction);
     const newViolations = violationsRef.current + 1;
     
@@ -89,23 +89,28 @@ export function useMonitoring({
     }
 
     // 6. Check auto-termination
-    if (newScore <= MIN_SCORE) {
+    const minScore = settings?.thresholds?.['Min Score for Auto-End'] ?? MIN_SCORE;
+    if (newScore <= minScore) {
       isTerminatedRef.current = true;
       onTerminate('Integrity score dropped below minimum threshold.');
       return;
     }
-    if (newViolations >= MAX_VIOLATIONS) {
+    
+    const maxViolations = settings?.thresholds?.['Max: Total Violations'] ?? MAX_VIOLATIONS;
+    if (newViolations >= maxViolations) {
       isTerminatedRef.current = true;
       onTerminate('Maximum number of violations exceeded.');
       return;
     }
     
     // Auto-terminate on multiple tab switches (strict mode)
-    if (type === 'tab_switch' && (summaryRef.current['tab_switch'] ?? 0) > 2) {
+    const tabSwitches = summaryRef.current['tab_switch'] ?? 0;
+    const maxTabSwitches = settings?.thresholds?.['Max: Tab Switches'] ?? 3;
+    if (type === 'tab_switch' && tabSwitches >= maxTabSwitches) {
       isTerminatedRef.current = true;
-      onTerminate('Multiple tab switches detected.');
+      onTerminate(`Session terminated: ${tabSwitches} tab switches detected.`);
     }
-  }, [onUpdateScore, onTerminate]);
+  }, [onUpdateScore, onTerminate, settings]);
 
   // Batch flusher (runs every 30s)
   useEffect(() => {
@@ -280,6 +285,101 @@ export function useMonitoring({
     };
     window.addEventListener('resize', debouncedResize);
 
+    // 9. Webcam Snapshots
+    let snapshotIntervalId: ReturnType<typeof setInterval>;
+    let videoTrack: MediaStreamTrack | null = null;
+    let videoEl: HTMLVideoElement | null = null;
+    let canvasEl: HTMLCanvasElement | null = null;
+
+    if (settings.webcamSnapshots) {
+      navigator.mediaDevices.getUserMedia({ video: true }).then(stream => {
+        videoTrack = stream.getVideoTracks()[0];
+        videoEl = document.createElement('video');
+        videoEl.srcObject = stream;
+        videoEl.play().catch(() => {});
+
+        canvasEl = document.createElement('canvas');
+        
+        // Take snapshots based on interval
+        snapshotIntervalId = setInterval(() => {
+          if (!videoEl || !canvasEl || !idRef.current) return;
+          if (videoEl.videoWidth === 0) return; // not loaded yet
+          
+          canvasEl.width = videoEl.videoWidth;
+          canvasEl.height = videoEl.videoHeight;
+          const ctx = canvasEl.getContext('2d');
+          if (!ctx) return;
+          
+          ctx.drawImage(videoEl, 0, 0, canvasEl.width, canvasEl.height);
+          canvasEl.toBlob(async (blob) => {
+            if (!blob) return;
+            const filename = `${idRef.current}/${Date.now()}.jpg`;
+            
+            // Upload to Supabase Storage
+            const { error: uploadErr } = await supabase.storage.from('webcam').upload(filename, blob, { 
+              contentType: 'image/jpeg',
+              upsert: true
+            });
+            
+            if (!uploadErr) {
+              // Save metadata to DB
+              await (supabase.from('webcam_snapshots') as any).insert({
+                session_id: idRef.current,
+                file_path: filename
+              });
+            }
+          }, 'image/jpeg', 0.5); // 0.5 quality to save bandwidth
+        }, (settings.webcamIntervalSec || 30) * 1000);
+      }).catch(err => {
+        console.error('Failed to start webcam in monitoring', err);
+        logEvent('admin_flag', 'Webcam stream failed or was denied');
+      });
+    }
+
+    // 10. Screen Snapshots
+    let screenIntervalId: ReturnType<typeof setInterval>;
+    let screenTrack: MediaStreamTrack | null = null;
+    let screenVideoEl: HTMLVideoElement | null = null;
+    let screenCanvasEl: HTMLCanvasElement | null = null;
+
+    if (settings.screenSnapshots && (window as any).__screenStream) {
+      const stream = (window as any).__screenStream as MediaStream;
+      screenTrack = stream.getVideoTracks()[0];
+      screenVideoEl = document.createElement('video');
+      screenVideoEl.srcObject = stream;
+      screenVideoEl.play().catch(() => {});
+
+      screenCanvasEl = document.createElement('canvas');
+      
+      screenIntervalId = setInterval(() => {
+        if (!screenVideoEl || !screenCanvasEl || !idRef.current) return;
+        if (screenVideoEl.videoWidth === 0) return;
+        
+        screenCanvasEl.width = screenVideoEl.videoWidth;
+        screenCanvasEl.height = screenVideoEl.videoHeight;
+        const ctx = screenCanvasEl.getContext('2d');
+        if (!ctx) return;
+        
+        ctx.drawImage(screenVideoEl, 0, 0, screenCanvasEl.width, screenCanvasEl.height);
+        screenCanvasEl.toBlob(async (blob) => {
+          if (!blob) return;
+          const filename = `${idRef.current}/screen_${Date.now()}.jpg`;
+          
+          const { error: uploadErr } = await supabase.storage.from('webcam').upload(filename, blob, { 
+            contentType: 'image/jpeg',
+            upsert: true
+          });
+          
+          if (!uploadErr) {
+            await (supabase.from('webcam_snapshots') as any).insert({
+              session_id: idRef.current,
+              file_path: filename
+            });
+          }
+        }, 'image/jpeg', 0.5);
+      }, (settings.webcamIntervalSec || 30) * 1000); // Reusing webcam interval for simplicity
+    }
+
     return () => {
       document.removeEventListener('visibilitychange', handleVisibility);
       window.removeEventListener('blur', handleBlur);
@@ -290,6 +390,15 @@ export function useMonitoring({
       document.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('resize', debouncedResize);
       clearTimeout(resizeTimeout);
+      if (snapshotIntervalId) clearInterval(snapshotIntervalId);
+      if (videoTrack) videoTrack.stop();
+      if (videoEl) videoEl.remove();
+      if (canvasEl) canvasEl.remove();
+      
+      if (screenIntervalId) clearInterval(screenIntervalId);
+      if (screenTrack) screenTrack.stop();
+      if (screenVideoEl) screenVideoEl.remove();
+      if (screenCanvasEl) screenCanvasEl.remove();
     };
-  }, [sessionToken, settings, logEvent]);
+  }, [sessionToken, settings, logEvent, supabase]);
 }

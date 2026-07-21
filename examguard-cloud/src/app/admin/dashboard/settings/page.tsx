@@ -34,11 +34,15 @@ export default function SettingsPage() {
     setSaving(true);
     
     try {
-      // Upsert all config values (Supabase update on multiple rows isn't easily batched without upsert)
-      const { error } = await (supabase.from('config') as any).upsert(
-        config.map(c => ({ key: c.key, value: c.value, notes: c.notes }))
+      // Use individual updates instead of upsert to avoid complex RLS INSERT/UPDATE quirks
+      const promises = config.map(c => 
+        (supabase.from('config') as any).update({ value: c.value, notes: c.notes }).eq('key', c.key)
       );
-      if (error) throw error;
+      
+      const results = await Promise.all(promises);
+      const errorResult = results.find(r => r.error);
+      if (errorResult) throw errorResult.error;
+      
       toast.success('Settings saved successfully');
     } catch (err: any) {
       toast.error('Failed to save settings: ' + err.message);

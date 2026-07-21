@@ -1,17 +1,17 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import type { Database } from '@/lib/supabase/types';
 
 type SessionRow = Database['public']['Tables']['sessions']['Row'];
 type ActivityEventRow = Database['public']['Tables']['activity_events']['Row'];
 
+const supabase = createClient();
+
 export function useRealtimeDashboard(selectedFormId: string | null) {
   const [sessions, setSessions] = useState<SessionRow[]>([]);
   const [events, setEvents] = useState<ActivityEventRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  const supabase = createClient();
 
   const fetchInitialData = useCallback(async () => {
     try {
@@ -56,7 +56,7 @@ export function useRealtimeDashboard(selectedFormId: string | null) {
     } finally {
       setLoading(false);
     }
-  }, [selectedFormId, supabase]);
+  }, [selectedFormId]);
 
   useEffect(() => {
     fetchInitialData();
@@ -94,7 +94,11 @@ export function useRealtimeDashboard(selectedFormId: string | null) {
           setSessions((currentSessions) => {
             const isRelevant = !selectedFormId || currentSessions.some(s => s.id === payload.new.session_id);
             if (isRelevant) {
-              setEvents((prev) => [payload.new as ActivityEventRow, ...prev].slice(0, 100));
+              setEvents((prev) => {
+                const newEvent = payload.new as ActivityEventRow;
+                if (prev.some(e => e.id === newEvent.id)) return prev;
+                return [newEvent, ...prev].slice(0, 100);
+              });
             }
             return currentSessions;
           });
@@ -106,7 +110,7 @@ export function useRealtimeDashboard(selectedFormId: string | null) {
       supabase.removeChannel(sessionSub);
       supabase.removeChannel(eventSub);
     };
-  }, [fetchInitialData, selectedFormId, supabase]);
+  }, [fetchInitialData, selectedFormId]);
 
   // Aggregate Metrics
   const metrics = {

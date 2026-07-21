@@ -5,7 +5,7 @@ import { NextResponse, type NextRequest } from 'next/server';
  * Next.js Edge Middleware — refreshes Supabase auth session on every request.
  * This ensures JWT tokens stay fresh and cookies are synced.
  */
-export default async function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const response = NextResponse.next({ request });
 
   const supabase = createServerClient(

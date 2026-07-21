@@ -48,6 +48,8 @@ export default function FormsManagementPage() {
             form_name: editingForm.form_name,
             google_form_id: editingForm.google_form_id,
             email_field: editingForm.email_field,
+            time_limit_minutes: editingForm.time_limit_minutes ? parseInt(editingForm.time_limit_minutes as any) : null,
+            allowed_emails: editingForm.allowed_emails || null,
             active: editingForm.active,
           })
           .eq('id', editingForm.id);
@@ -60,6 +62,8 @@ export default function FormsManagementPage() {
             form_name: editingForm.form_name!,
             google_form_id: editingForm.google_form_id!,
             email_field: editingForm.email_field!,
+            time_limit_minutes: editingForm.time_limit_minutes ? parseInt(editingForm.time_limit_minutes as any) : null,
+            allowed_emails: editingForm.allowed_emails || null,
             active: editingForm.active ?? true,
             sort_order: forms.length + 1,
           });
@@ -183,6 +187,19 @@ export default function FormsManagementPage() {
               <div>
                 <label style={{ display: 'block', fontSize: 13, marginBottom: 6 }}>Email Field ID (entry.xxxxx)</label>
                 <input required value={editingForm.email_field || ''} onChange={e => setEditingForm({...editingForm, email_field: e.target.value})} style={{ width: '100%', padding: 10, borderRadius: 6, border: '1px solid var(--line)' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 13, marginBottom: 6 }}>Time Limit (Minutes, optional)</label>
+                <input type="number" min="1" value={editingForm.time_limit_minutes || ''} onChange={e => setEditingForm({...editingForm, time_limit_minutes: e.target.value ? parseInt(e.target.value) as any : null})} style={{ width: '100%', padding: 10, borderRadius: 6, border: '1px solid var(--line)' }} placeholder="e.g. 60 for 1 hour" />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 13, marginBottom: 6 }}>Allowed Emails (Optional Whitelist)</label>
+                <textarea 
+                  value={editingForm.allowed_emails || ''} 
+                  onChange={e => setEditingForm({...editingForm, allowed_emails: e.target.value})} 
+                  style={{ width: '100%', padding: 10, borderRadius: 6, border: '1px solid var(--line)', minHeight: 80, resize: 'vertical' }} 
+                  placeholder="Paste emails separated by commas or newlines. Leave blank to allow anyone." 
+                />
               </div>
               <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14 }}>
                 <input type="checkbox" checked={editingForm.active} onChange={e => setEditingForm({...editingForm, active: e.target.checked})} />

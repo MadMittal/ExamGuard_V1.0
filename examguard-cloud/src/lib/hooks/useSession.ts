@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import type { ExamInfo, ClientSettings, StudentScreen, BlockedReason } from '@/types/exam';
 import type { SessionConflictResult, StudentRow, SessionRow } from '@/lib/supabase/types';
@@ -14,6 +14,7 @@ interface SessionState {
   section: string;
   sessionToken: string | null;
   sessionId: string | null;
+  startedAt: string | null;
   score: number;
   violations: number;
   blockedReason: BlockedReason | null;
@@ -31,6 +32,7 @@ const initialState: SessionState = {
   section: '',
   sessionToken: null,
   sessionId: null,
+  startedAt: null,
   score: 100,
   violations: 0,
   blockedReason: null,
@@ -44,7 +46,7 @@ const initialState: SessionState = {
  * Core session state machine for the student exam flow.
  * Manages: landing → login → checking → blocked/exam-info → pre-checklist → exam-active → completed
  */
-export function useSession(settings: ClientSettings | null) {
+export function useSession(settings: ClientSettings | null, forms: ExamInfo[]) {
   const [state, setState] = useState<SessionState>(initialState);
   const supabase = createClient();
 
@@ -57,25 +59,38 @@ export function useSession(settings: ClientSettings | null) {
     update({ screen: 'login', selectedForm: form, error: null });
   }, [update]);
 
-  /** Login → Checking → ExamInfo or Blocked */
-  const submitEmail = useCallback(async (rawEmail: string) => {
-    const parsed = emailSchema.safeParse(rawEmail);
-    if (!parsed.success) {
-      update({ error: parsed.error.errors[0]?.message ?? 'Invalid email' });
-      return;
-    }
-    const email = parsed.data;
+  /** Trigger Google OAuth Login */
+  const submitEmail = useCallback(async () => {
     const form = state.selectedForm;
     if (!form) return;
 
+    update({ loading: true, error: null });
+
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/exam?formId=${form.id}`,
+      },
+    });
+
+    if (error) {
+      update({ loading: false, error: error.message });
+    }
+  }, [state.selectedForm, supabase, update]);
+
+  /** Process student after OAuth redirect */
+  const processStudentLogin = useCallback(async (email: string, form: ExamInfo) => {
     update({ screen: 'checking', email, loading: true, error: null });
 
     try {
-      // Anonymous sign-in with email claim (low friction for v1)
-      const { error: authError } = await supabase.auth.signInAnonymously({
-        options: { data: { email } },
-      });
-      if (authError) throw authError;
+      // Domain validation
+      const allowedDomain = process.env.NEXT_PUBLIC_ALLOWED_DOMAIN;
+      if (allowedDomain && !email.toLowerCase().endsWith(`@${allowedDomain.toLowerCase()}`)) {
+        update({ screen: 'blocked', blockedReason: 'not_allowed', blockedMessage: `Only students from ${allowedDomain} can access this exam.`, loading: false });
+        // Sign out so they can switch accounts
+        await supabase.auth.signOut();
+        return;
+      }
 
       // Check roster in CLOSED mode
       if (settings?.rosterMode === 'CLOSED') {
@@ -118,27 +133,48 @@ export function useSession(settings: ClientSettings | null) {
       }
 
       if (result.reason === 'resume' && result.token) {
-        // Resume existing active session
+        // Resume existing active session — go to checklist first to enforce fullscreen!
         update({
-          screen: 'exam-active',
+          screen: 'pre-checklist',
           sessionToken: result.token,
           sessionId: result.session_id ?? null,
+          startedAt: result.started_at ?? null,
           score: result.score ?? 100,
           loading: false,
         });
         return;
       }
 
-      // New session — show exam info screen
-      update({ screen: 'exam-info', loading: false });
+      // New session — proceed to pre-checklist
+      update({ screen: 'pre-checklist', loading: false });
     } catch (err) {
       update({
         screen: 'login',
         loading: false,
-        error: err instanceof Error ? err.message : 'Failed to verify email',
+        error: err instanceof Error ? err.message : 'Failed to verify session',
       });
     }
-  }, [state.selectedForm, settings, supabase, update]);
+  }, [settings, supabase, update]);
+
+  // Handle OAuth Redirect on mount
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const searchParams = new URLSearchParams(window.location.search);
+    const formId = searchParams.get('formId');
+
+    if (formId && forms.length > 0) {
+      supabase.auth.getUser().then(({ data: { user } }) => {
+        if (user && user.email) {
+          const email = user.email;
+          const form = forms.find(f => f.id === formId);
+          if (form) {
+            update({ selectedForm: form });
+            processStudentLogin(email, form);
+          }
+        }
+      });
+    }
+  }, [forms, processStudentLogin, supabase, update]);
 
   /** ExamInfo → PreChecklist */
   const goToChecklist = useCallback(() => {
@@ -151,6 +187,12 @@ export function useSession(settings: ClientSettings | null) {
     if (!form) return;
 
     update({ loading: true, error: null });
+
+    // If we are resuming a session, we already have a token
+    if (state.sessionToken) {
+      update({ screen: 'exam-active', loading: false });
+      return;
+    }
 
     try {
       const { data: session, error: insertErr } = await (supabase.from('sessions') as any)
@@ -167,7 +209,7 @@ export function useSession(settings: ClientSettings | null) {
           reason: '',
           violation_summary: {},
         })
-        .select('id, token')
+        .select('id, token, started_at')
         .single();
 
       if (insertErr) throw insertErr;
@@ -177,14 +219,15 @@ export function useSession(settings: ClientSettings | null) {
         screen: 'exam-active',
         sessionToken: s.token,
         sessionId: s.id,
+        startedAt: s.started_at,
         score: 100,
         violations: 0,
         loading: false,
       });
-    } catch (err) {
+    } catch (err: any) {
       update({
         loading: false,
-        error: err instanceof Error ? err.message : 'Failed to start session',
+        error: err?.message || (err instanceof Error ? err.message : 'Failed to start session'),
       });
     }
   }, [state.selectedForm, state.email, state.studentName, state.rollNo, state.section, supabase, update]);
@@ -229,7 +272,7 @@ export function useSession(settings: ClientSettings | null) {
     update({
       screen: 'completed',
       blockedReason: 'terminated',
-      blockedMessage: `Session terminated: ${reason}`,
+      blockedMessage: reason,
     });
   }, [state.sessionToken, supabase, update]);
 
@@ -240,7 +283,7 @@ export function useSession(settings: ClientSettings | null) {
 
   /** Google Form embed URL with email pre-fill */
   const googleFormUrl = state.selectedForm
-    ? `https://docs.google.com/forms/d/e/${state.selectedForm.googleFormId}/viewform?embedded=true&entry.${state.selectedForm.emailField}=${encodeURIComponent(state.email)}`
+    ? `https://docs.google.com/forms/d/e/${state.selectedForm.googleFormId}/viewform?embedded=true&emailAddress=${encodeURIComponent(state.email)}&entry.${state.selectedForm.emailField}=${encodeURIComponent(state.email)}`
     : '';
 
   return {

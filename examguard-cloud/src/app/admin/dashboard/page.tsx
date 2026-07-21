@@ -9,6 +9,7 @@ import { ActivityFeed } from '@/components/admin/ActivityFeed';
 import { createClient } from '@/lib/supabase/client';
 import type { Database } from '@/lib/supabase/types';
 import { toast } from 'sonner';
+import { Trash2 } from 'lucide-react';
 
 type FormRow = Database['public']['Tables']['forms']['Row'];
 
@@ -49,19 +50,46 @@ export default function AdminDashboardPage() {
 
   const handleTerminateSession = async (sessionId: string) => {
     try {
-      const { error } = await (supabase.from('sessions') as any)
+      const { data, error } = await (supabase.from('sessions') as any)
         .update({
           status: 'TERMINATED',
-          reason: 'terminated',
-          blocked_message: 'Your session was manually terminated by an administrator.',
+          reason: 'Your session was manually terminated by an administrator.',
         })
-        .eq('id', sessionId);
+        .eq('id', sessionId)
+        .select();
 
       if (error) throw error;
+      if (!data || data.length === 0) throw new Error('Update failed or no permission');
+      
       toast.success('Session terminated successfully');
-      // Optimistic update isn't strictly necessary due to Realtime, but Realtime will catch it shortly.
+      refresh(); // Force a refresh to ensure UI updates immediately
     } catch (err: any) {
       toast.error('Failed to terminate session: ' + err.message);
+    }
+  };
+
+  const handleAllowRetake = async (sessionId: string) => {
+    try {
+      const { data, error } = await supabase.from('sessions').delete().eq('id', sessionId).select();
+      if (error) throw error;
+      if (!data || data.length === 0) throw new Error('Delete failed or no permission');
+      
+      toast.success('Session deleted. Student can now retake the exam.');
+      refresh(); // Force a refresh to ensure UI updates immediately
+    } catch (err: any) {
+      toast.error('Failed to delete session: ' + err.message);
+    }
+  };
+
+  const handleWipeAllData = async () => {
+    if (!confirm('Are you sure you want to delete ALL sessions? This cannot be undone.')) return;
+    try {
+      const { error } = await supabase.from('sessions').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      if (error) throw error;
+      toast.success('All sessions cleared.');
+      refresh();
+    } catch (err: any) {
+      toast.error('Failed to clear sessions: ' + err.message);
     }
   };
 
@@ -104,28 +132,50 @@ export default function AdminDashboardPage() {
         <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
             <h2 style={{ fontSize: 18, fontWeight: 600 }}>Active Sessions</h2>
-            <button
-              onClick={refresh}
-              className="focus-ring"
-              style={{
-                padding: '6px 12px',
-                fontSize: 13,
-                fontWeight: 500,
-                color: 'var(--muted)',
-                background: 'var(--panel)',
-                border: '1px solid var(--line)',
-                borderRadius: 'var(--radius-sm)',
-                cursor: 'pointer'
-              }}
-            >
-              Refresh Data
-            </button>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                onClick={handleWipeAllData}
+                className="focus-ring"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '6px 12px',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  color: 'var(--danger)',
+                  background: 'var(--danger-light)',
+                  border: '1px solid var(--danger)',
+                  borderRadius: 'var(--radius-sm)',
+                  cursor: 'pointer'
+                }}
+              >
+                <Trash2 size={14} /> Wipe All
+              </button>
+              <button
+                onClick={refresh}
+                className="focus-ring"
+                style={{
+                  padding: '6px 12px',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  color: 'var(--muted)',
+                  background: 'var(--panel)',
+                  border: '1px solid var(--line)',
+                  borderRadius: 'var(--radius-sm)',
+                  cursor: 'pointer'
+                }}
+              >
+                Refresh Data
+              </button>
+            </div>
           </div>
           
           <div style={{ flex: 1, overflowY: 'auto' }}>
             <SessionsGrid 
               data={sessions} 
               onTerminateSession={handleTerminateSession}
+              onAllowRetake={handleAllowRetake}
               loading={loadingDashboard}
             />
           </div>

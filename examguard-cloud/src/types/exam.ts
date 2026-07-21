@@ -17,6 +17,7 @@ export interface ExamInfo {
   emailField: string;
   startTime: string | null;
   endTime: string | null;
+  timeLimitMinutes: number | null;
   isOpen: boolean;
   statusLabel: 'Active' | 'Scheduled' | 'Expired' | 'Inactive';
 }
@@ -36,6 +37,7 @@ export interface ClientSettings {
   monitorRightClick: boolean;
   monitorKeyboard: boolean;
   webcamSnapshots: boolean;
+  screenSnapshots: boolean;
   webcamIntervalSec: number;
   idleTimeoutSec: number;
   rosterMode: 'OPEN' | 'CLOSED';
@@ -72,6 +74,7 @@ export function parseClientSettings(config: Record<string, string>): ClientSetti
     monitorRightClick: bool('Monitor Right Click'),
     monitorKeyboard: bool('Monitor Keyboard'),
     webcamSnapshots: bool('Webcam Snapshots', false),
+    screenSnapshots: bool('Screen Snapshots', false),
     webcamIntervalSec: num('Webcam Interval (sec)', 30),
     idleTimeoutSec: num('Idle Timeout (sec)', 300),
     rosterMode: config['Roster Mode']?.toUpperCase() === 'CLOSED' ? 'CLOSED' : 'OPEN',

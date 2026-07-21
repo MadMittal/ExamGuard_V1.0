@@ -8,6 +8,7 @@ interface Props {
   settings: ClientSettings;
   onReady: () => void;
   loading: boolean;
+  error?: string | null;
 }
 
 interface Check {
@@ -17,8 +18,42 @@ interface Check {
   action?: () => void;
 }
 
-export function PreExamChecklist({ settings, onReady, loading }: Props) {
+export function PreExamChecklist({ settings, onReady, loading, error }: Props) {
   const [fullscreenDone, setFullscreenDone] = useState(false);
+  const [webcamGranted, setWebcamGranted] = useState(false);
+  const [webcamError, setWebcamError] = useState<string | null>(null);
+  const [screenGranted, setScreenGranted] = useState(false);
+  const [screenError, setScreenError] = useState<string | null>(null);
+
+  const requestWebcam = useCallback(async () => {
+    try {
+      setWebcamError(null);
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      stream.getTracks().forEach(track => track.stop());
+      setWebcamGranted(true);
+    } catch (err: any) {
+      setWebcamError('Camera access denied or not found.');
+    }
+  }, []);
+
+  const requestScreen = useCallback(async () => {
+    try {
+      setScreenError(null);
+      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+      (window as any).__screenStream = stream; // Pass to monitoring hook
+      
+      // If user stops sharing from browser UI before exam starts
+      stream.getVideoTracks()[0].onended = () => {
+        setScreenGranted(false);
+        setScreenError('Screen sharing was stopped. Please activate again.');
+        (window as any).__screenStream = null;
+      };
+      
+      setScreenGranted(true);
+    } catch (err: any) {
+      setScreenError('Screen sharing access denied.');
+    }
+  }, []);
 
   const enterFullscreen = useCallback(async () => {
     try {
@@ -65,6 +100,24 @@ export function PreExamChecklist({ settings, onReady, loading }: Props) {
     });
   }
 
+  if (settings.webcamSnapshots) {
+    checks.push({
+      id: 'webcam',
+      label: webcamError || 'Camera permissions',
+      passed: webcamGranted,
+      action: !webcamGranted ? requestWebcam : undefined,
+    });
+  }
+
+  if (settings.screenSnapshots) {
+    checks.push({
+      id: 'screen',
+      label: screenError || 'Screen sharing permissions',
+      passed: screenGranted,
+      action: !screenGranted ? requestScreen : undefined,
+    });
+  }
+
   // Listen for fullscreen changes
   useEffect(() => {
     const handler = () => {
@@ -73,6 +126,13 @@ export function PreExamChecklist({ settings, onReady, loading }: Props) {
     document.addEventListener('fullscreenchange', handler);
     return () => document.removeEventListener('fullscreenchange', handler);
   }, []);
+
+  // Auto-request webcam if needed and not already granted
+  useEffect(() => {
+    if (settings.webcamSnapshots && !webcamGranted && !webcamError) {
+      requestWebcam();
+    }
+  }, [settings.webcamSnapshots, webcamGranted, webcamError, requestWebcam]);
 
   const allPassed = checks.every(c => c.passed);
 
@@ -133,12 +193,20 @@ export function PreExamChecklist({ settings, onReady, loading }: Props) {
         }}>
           <strong>⚠️ During this exam:</strong>
           <ul style={{ margin: '6px 0 0 16px', padding: 0 }}>
-            <li>Do not switch tabs or windows</li>
-            <li>Do not use copy/paste</li>
-            {settings.requireFullscreen && <li>Stay in fullscreen mode</li>}
+            {settings.monitorTabs && <li>Do not switch tabs or windows {settings.autoEndOnViolations ? `(Max: ${settings.thresholds['Max: Tab Switches']})` : ''}</li>}
+            {settings.monitorFocus && <li>Do not look away from the screen {settings.autoEndOnViolations ? `(Max focus losses: ${settings.thresholds['Max: Focus Losses']})` : ''}</li>}
+            {settings.monitorClipboard && <li>Do not use copy/paste</li>}
+            {settings.requireFullscreen && <li>Stay in fullscreen mode {settings.autoEndOnViolations ? `(Max exits: ${settings.thresholds['Max: Fullscreen Exits']})` : ''}</li>}
             <li>Violations reduce your integrity score</li>
+            {settings.autoEndOnViolations && <li><strong>Your exam will auto-terminate if you exceed the max violations.</strong></li>}
           </ul>
         </div>
+
+        {error && (
+          <div style={{ color: 'var(--danger)', fontSize: 14, marginBottom: 16, textAlign: 'center' }}>
+            {error}
+          </div>
+        )}
 
         <button
           onClick={onReady}
