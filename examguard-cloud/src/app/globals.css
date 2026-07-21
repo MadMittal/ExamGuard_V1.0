@@ -1,0 +1,203 @@
+@import "tailwindcss";
+
+/* =============================================================================
+   ExamGuard Cloud — Global Styles & Design System
+   ============================================================================= */
+
+/* --------------------------------------------------------------------------
+   CSS Custom Properties (Design Tokens)
+   -------------------------------------------------------------------------- */
+
+:root {
+  /* Brand */
+  --brand: #2454c6;
+  --brand-dark: #183a88;
+  --brand-light: #ebf0ff;
+  --brand-alpha: rgba(36, 84, 198, 0.08);
+
+  /* Semantic */
+  --success: #168253;
+  --success-light: #ecfdf5;
+  --warning: #a16207;
+  --warning-light: #fffbeb;
+  --danger: #be123c;
+  --danger-light: #fff1f2;
+
+  /* Neutrals */
+  --ink: #172033;
+  --muted: #667085;
+  --subtle: #94a3b8;
+  --line: #d9e2ec;
+  --panel: #ffffff;
+  --soft: #f6f8fb;
+  --canvas: #f1f5f9;
+
+  /* Elevation */
+  --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06);
+  --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08);
+  --shadow-lg: 0 12px 36px rgba(15, 23, 42, 0.10);
+  --shadow-xl: 0 24px 48px rgba(15, 23, 42, 0.14);
+
+  /* Radii */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+
+  /* Font */
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Consolas, 'Liberation Mono', monospace;
+}
+
+/* Dark mode */
+[data-theme="dark"] {
+  --ink: #f1f5f9;
+  --muted: #94a3b8;
+  --subtle: #64748b;
+  --line: #334155;
+  --panel: #1e293b;
+  --soft: #0f172a;
+  --canvas: #020617;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 12px 36px rgba(0, 0, 0, 0.5);
+  --shadow-xl: 0 24px 48px rgba(0, 0, 0, 0.6);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ink: #f1f5f9;
+    --muted: #94a3b8;
+    --subtle: #64748b;
+    --line: #334155;
+    --panel: #1e293b;
+    --soft: #0f172a;
+    --canvas: #020617;
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 12px 36px rgba(0, 0, 0, 0.5);
+    --shadow-xl: 0 24px 48px rgba(0, 0, 0, 0.6);
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Base Styles
+   -------------------------------------------------------------------------- */
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  color: var(--ink);
+  font-family: var(--font-sans);
+  background: var(--canvas);
+  letter-spacing: -0.011em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* --------------------------------------------------------------------------
+   Animations
+   -------------------------------------------------------------------------- */
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slideOutRight {
+  from { transform: translateX(0); opacity: 1; }
+  to   { transform: translateX(100%); opacity: 0; }
+}
+
+@keyframes scorePulse {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.animate-fade-in {
+  animation: fadeIn 300ms ease-out;
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 200ms ease-out;
+}
+
+.animate-score-pulse {
+  animation: scorePulse 400ms ease-in-out;
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Skeleton loading shimmer */
+.skeleton {
+  background: linear-gradient(90deg, var(--soft) 25%, var(--line) 50%, var(--soft) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: var(--radius-sm);
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in,
+  .animate-slide-in-right,
+  .animate-score-pulse,
+  .animate-pulse,
+  .skeleton {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Scrollbar Styling
+   -------------------------------------------------------------------------- */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--subtle);
+}
+
+/* --------------------------------------------------------------------------
+   Focus Ring Utility
+   -------------------------------------------------------------------------- */
+
+.focus-ring:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--panel), 0 0 0 4px var(--brand);
+}

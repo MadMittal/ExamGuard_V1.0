@@ -1,0 +1,7 @@
+{
+  "entries": [
+    { "path": "../gstack" },
+    { "path": "../gstack/browser-skills" },
+    { "path": "../gstack/openclaw/skills" }
+  ]
+}
