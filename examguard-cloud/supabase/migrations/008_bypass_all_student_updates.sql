@@ -3,7 +3,7 @@
 
 -- 1. Heartbeat RPC (for updating score, violations, and last_seen)
 CREATE OR REPLACE FUNCTION heartbeat_student_session(
-    session_token UUID,
+    session_token TEXT,
     new_score INTEGER,
     new_violations INTEGER,
     new_summary JSONB
@@ -40,7 +40,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- 2. End Session RPC (updated to remove the auth.jwt() dependency)
 CREATE OR REPLACE FUNCTION end_student_session(
-    session_token UUID,
+    session_token TEXT,
     new_status TEXT,
     end_reason TEXT DEFAULT ''
 )
