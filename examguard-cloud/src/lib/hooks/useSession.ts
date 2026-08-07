@@ -283,14 +283,20 @@ export function useSession(settings: ClientSettings | null, forms: ExamInfo[]) {
     update({ screen: 'completing', loading: true });
 
     try {
-      await (supabase.rpc as any)('end_student_session', {
+      const { data, error } = await (supabase.rpc as any)('end_student_session', {
         session_token: state.sessionToken,
         new_status: 'COMPLETED',
         end_reason: reason,
       });
-
+      if (error) {
+        console.error('RPC Error:', error);
+      }
+      if (data && data.success === false) {
+        console.error('RPC Failed:', data.message);
+      }
       update({ screen: 'completed', loading: false });
-    } catch {
+    } catch (err) {
+      console.error('Exception during endSession:', err);
       // Even if the update fails, show completion — the heartbeat will handle sync
       update({ screen: 'completed', loading: false });
     }
@@ -301,12 +307,19 @@ export function useSession(settings: ClientSettings | null, forms: ExamInfo[]) {
     if (!state.sessionToken) return;
 
     try {
-      await (supabase.rpc as any)('end_student_session', {
+      const { data, error } = await (supabase.rpc as any)('end_student_session', {
         session_token: state.sessionToken,
         new_status: 'TERMINATED',
         end_reason: reason,
       });
-    } catch {
+      if (error) {
+        console.error('Terminate RPC Error:', error);
+      }
+      if (data && data.success === false) {
+        console.error('Terminate RPC Failed:', data.message);
+      }
+    } catch (err) {
+      console.error('Exception during terminateSession:', err);
       // Best-effort — session may already be terminated
     }
 

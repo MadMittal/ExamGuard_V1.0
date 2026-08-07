@@ -122,13 +122,13 @@ export function useMonitoring({
       
       // Heartbeat or batch processing
       if (queue.length === 0) {
-        // Just heartbeat update last_seen
-        await (supabase.from('sessions') as any).update({
-          last_seen: new Date().toISOString(),
-          score: scoreRef.current,
-          violations: violationsRef.current,
-          violation_summary: currentSummary,
-        }).eq('token', tokenRef.current);
+        // Just heartbeat update via RPC to bypass RLS issues
+        await (supabase.rpc as any)('heartbeat_student_session', {
+          session_token: tokenRef.current,
+          new_score: scoreRef.current,
+          new_violations: violationsRef.current,
+          new_summary: currentSummary,
+        });
         return;
       }
 
@@ -145,13 +145,13 @@ export function useMonitoring({
       try {
         await (supabase.from('activity_events') as any).insert(rowsToInsert);
         
-        // Update session state
-        await (supabase.from('sessions') as any).update({
-          last_seen: new Date().toISOString(),
-          score: scoreRef.current,
-          violations: violationsRef.current,
-          violation_summary: currentSummary,
-        }).eq('token', tokenRef.current);
+        // Update session state via RPC
+        await (supabase.rpc as any)('heartbeat_student_session', {
+          session_token: tokenRef.current,
+          new_score: scoreRef.current,
+          new_violations: violationsRef.current,
+          new_summary: currentSummary,
+        });
       } catch (err) {
         // Simple in-memory retry buffer (push back to front)
         console.error('Failed to flush events', err);
