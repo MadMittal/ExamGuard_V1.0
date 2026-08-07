@@ -283,13 +283,11 @@ export function useSession(settings: ClientSettings | null, forms: ExamInfo[]) {
     update({ screen: 'completing', loading: true });
 
     try {
-      await (supabase.from('sessions') as any)
-        .update({
-          status: 'COMPLETED',
-          ended_at: new Date().toISOString(),
-          reason,
-        })
-        .eq('token', state.sessionToken);
+      await (supabase.rpc as any)('end_student_session', {
+        session_token: state.sessionToken,
+        new_status: 'COMPLETED',
+        end_reason: reason,
+      });
 
       update({ screen: 'completed', loading: false });
     } catch {
@@ -303,13 +301,11 @@ export function useSession(settings: ClientSettings | null, forms: ExamInfo[]) {
     if (!state.sessionToken) return;
 
     try {
-      await (supabase.from('sessions') as any)
-        .update({
-          status: 'TERMINATED',
-          ended_at: new Date().toISOString(),
-          reason,
-        })
-        .eq('token', state.sessionToken);
+      await (supabase.rpc as any)('end_student_session', {
+        session_token: state.sessionToken,
+        new_status: 'TERMINATED',
+        end_reason: reason,
+      });
     } catch {
       // Best-effort — session may already be terminated
     }
