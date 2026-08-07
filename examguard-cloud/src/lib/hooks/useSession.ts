@@ -195,16 +195,38 @@ export function useSession(settings: ClientSettings | null, forms: ExamInfo[]) {
     }
 
     try {
-      // Check for an existing active session (e.g. browser crashed, page refreshed)
+      // Check for any existing session (active, terminated, or completed)
       const { data: existing } = await (supabase.from('sessions') as any)
-        .select('id, token, started_at, score, violations')
+        .select('id, token, started_at, score, violations, status')
         .eq('email', state.email.toLowerCase().trim())
         .eq('form_id', form.id)
-        .eq('status', 'ACTIVE')
+        .in('status', ['ACTIVE', 'TERMINATED', 'COMPLETED'])
+        .order('started_at', { ascending: false })
+        .limit(1)
         .maybeSingle();
 
       if (existing) {
-        // Resume the existing session instead of creating a duplicate
+        // Block if terminated
+        if (existing.status === 'TERMINATED') {
+          update({
+            screen: 'blocked',
+            blockedReason: 'terminated',
+            blockedMessage: 'Your exam session was TERMINATED due to academic integrity violations. You cannot restart this exam.',
+            loading: false,
+          });
+          return;
+        }
+        // Block if completed
+        if (existing.status === 'COMPLETED') {
+          update({
+            screen: 'blocked',
+            blockedReason: 'completed',
+            blockedMessage: 'You have already completed and submitted this exam.',
+            loading: false,
+          });
+          return;
+        }
+        // Resume the existing active session
         const s = existing as unknown as SessionRow;
         update({
           screen: 'exam-active',
