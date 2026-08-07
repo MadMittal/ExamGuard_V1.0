@@ -195,6 +195,29 @@ export function useSession(settings: ClientSettings | null, forms: ExamInfo[]) {
     }
 
     try {
+      // Check for an existing active session (e.g. browser crashed, page refreshed)
+      const { data: existing } = await (supabase.from('sessions') as any)
+        .select('id, token, started_at, score, violations')
+        .eq('email', state.email.toLowerCase().trim())
+        .eq('form_id', form.id)
+        .eq('status', 'ACTIVE')
+        .maybeSingle();
+
+      if (existing) {
+        // Resume the existing session instead of creating a duplicate
+        const s = existing as unknown as SessionRow;
+        update({
+          screen: 'exam-active',
+          sessionToken: s.token,
+          sessionId: s.id,
+          startedAt: s.started_at,
+          score: s.score ?? 100,
+          violations: s.violations ?? 0,
+          loading: false,
+        });
+        return;
+      }
+
       const { data: session, error: insertErr } = await (supabase.from('sessions') as any)
         .insert({
           email: state.email.toLowerCase().trim(),
