@@ -19,7 +19,7 @@ export const MAX_BATCH_SIZE = 10;
 export const MIN_SCREEN_WIDTH = 1024;
 
 /** Minimum screen height for exam eligibility */
-export const MIN_SCREEN_HEIGHT = 768;
+export const MIN_SCREEN_HEIGHT = 600;
 
 /** Split-screen detection threshold (percentage of screen width) */
 export const SPLIT_SCREEN_THRESHOLD = 0.9;

@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client';
 import type { EventType, ViolationSummary } from '@/lib/supabase/types';
 import type { ClientSettings } from '@/types/exam';
 import { toast } from 'sonner';
-import { DEDUCTIONS, MAX_VIOLATIONS, MIN_SCORE } from '@/lib/utils/constants';
+import { DEDUCTIONS, MAX_VIOLATIONS, MIN_SCORE, SPLIT_SCREEN_THRESHOLD } from '@/lib/utils/constants';
 
 interface MonitoringConfig {
   sessionToken: string | null;
@@ -268,9 +268,16 @@ export function useMonitoring({
     };
 
     // 6. Split screen detection (Resize)
+    // Capture initial viewport dimensions at exam start (fullscreen or maximized).
+    // Win+Arrow snap halves the width, which drops below 90% of the initial size.
+    const initialWidth = window.innerWidth;
+    const initialHeight = window.innerHeight;
     const handleResize = () => {
-      if (window.innerWidth < 800 || window.innerHeight < 600) {
-        logEvent('split_screen', 'Window resized below minimum dimensions (possible split screen)');
+      if (
+        window.innerWidth < initialWidth * SPLIT_SCREEN_THRESHOLD ||
+        window.innerHeight < initialHeight * SPLIT_SCREEN_THRESHOLD
+      ) {
+        logEvent('split_screen', `Window resized to ${window.innerWidth}×${window.innerHeight} (was ${initialWidth}×${initialHeight})`);
       }
     };
 

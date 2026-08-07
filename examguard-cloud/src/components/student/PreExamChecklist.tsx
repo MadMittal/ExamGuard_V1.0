@@ -71,8 +71,8 @@ export function PreExamChecklist({ settings, onReady, loading, error }: Props) {
   
   const isScreenOk =
     typeof window !== 'undefined' &&
-    window.screen.width >= MIN_SCREEN_WIDTH &&
-    window.screen.height >= MIN_SCREEN_HEIGHT;
+    window.innerWidth >= MIN_SCREEN_WIDTH &&
+    window.innerHeight >= MIN_SCREEN_HEIGHT;
 
   const checks: Check[] = [
     {
@@ -82,7 +82,7 @@ export function PreExamChecklist({ settings, onReady, loading, error }: Props) {
     },
     {
       id: 'screen',
-      label: `Screen size adequate (${typeof window !== 'undefined' ? `${window.screen.width}×${window.screen.height}` : 'Unknown'})`,
+      label: `Screen size adequate (${typeof window !== 'undefined' ? `${window.innerWidth}×${window.innerHeight}` : 'Unknown'})`,
       passed: isScreenOk,
     },
   ];
