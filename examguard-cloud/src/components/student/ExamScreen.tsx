@@ -60,28 +60,6 @@ export function ExamScreen({
   const [isFullscreen, setIsFullscreen] = useState(true);
   const [warningShown, setWarningShown] = useState(false);
   
-  // Track iframe loads to detect form submission
-  const [iframeLoadCount, setIframeLoadCount] = useState(0);
-  const firstLoadTimeRef = useRef(0);
-
-  const handleIframeLoad = () => {
-    const now = Date.now();
-    setIframeLoadCount(prev => {
-      if (prev === 0) {
-        firstLoadTimeRef.current = now;
-      }
-      return prev + 1;
-    });
-  };
-
-  useEffect(() => {
-    // If this is the second (or subsequent) load AND it happened at least 5 seconds
-    // after the first load, it means the student submitted the Google Form and was 
-    // redirected to the "Thank you" page! We should auto-terminate the session.
-    if (iframeLoadCount >= 2 && Date.now() - firstLoadTimeRef.current > 5000) {
-      onSubmit();
-    }
-  }, [iframeLoadCount, onSubmit]);
 
   // Fullscreen listener
   useEffect(() => {
@@ -228,7 +206,6 @@ export function ExamScreen({
         }}
         title="Exam Form"
         sandbox="allow-scripts allow-forms allow-same-origin allow-popups"
-        onLoad={handleIframeLoad}
       />
 
         {(!isFullscreen && settings?.requireFullscreen) && (
