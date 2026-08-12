@@ -109,7 +109,7 @@ export function ExamScreen({
           onTerminate('Time limit exceeded');
         } 
         // Warning toast at 60 seconds remaining
-        else if (secs === 60 && !warningShown) {
+        else if (secs <= 60 && secs > 0 && !warningShown) {
           setWarningShown(true);
         }
       }
