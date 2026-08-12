@@ -264,13 +264,13 @@ export function ExamScreen({
               fontSize: 14,
               fontWeight: 600,
               color: '#fff',
-              background: 'var(--danger)',
+              background: 'var(--brand)',
               border: 'none',
               borderRadius: 'var(--radius-md)',
               cursor: 'pointer',
             }}
           >
-            Submit &amp; End Exam
+            Stop Monitoring &amp; Exit
           </button>
         ) : (
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -284,13 +284,13 @@ export function ExamScreen({
                 fontSize: 14,
                 fontWeight: 600,
                 color: '#fff',
-                background: 'var(--danger)',
+                background: 'var(--brand)',
                 border: 'none',
                 borderRadius: 'var(--radius-md)',
                 cursor: 'pointer',
               }}
             >
-              {loading ? 'Submitting…' : 'Yes, End Exam'}
+              {loading ? 'Exiting…' : 'Yes, Exit'}
             </button>
             <button
               onClick={() => setConfirmOpen(false)}
