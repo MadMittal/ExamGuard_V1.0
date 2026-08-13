@@ -264,7 +264,7 @@ export function ExamScreen({
               fontSize: 14,
               fontWeight: 600,
               color: '#fff',
-              background: 'var(--brand)',
+              background: '#4b5563',
               border: 'none',
               borderRadius: 'var(--radius-md)',
               cursor: 'pointer',
@@ -274,7 +274,7 @@ export function ExamScreen({
           </button>
         ) : (
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span style={{ fontSize: 13, color: 'var(--danger)' }}>Are you sure? This cannot be undone.</span>
+            <span style={{ fontSize: 13, color: 'var(--ink)' }}>Are you sure? Please ensure you have submitted the form first.</span>
             <button
               onClick={() => { setConfirmOpen(false); onSubmit(); }}
               disabled={loading}
@@ -284,7 +284,7 @@ export function ExamScreen({
                 fontSize: 14,
                 fontWeight: 600,
                 color: '#fff',
-                background: 'var(--brand)',
+                background: '#4b5563',
                 border: 'none',
                 borderRadius: 'var(--radius-md)',
                 cursor: 'pointer',
