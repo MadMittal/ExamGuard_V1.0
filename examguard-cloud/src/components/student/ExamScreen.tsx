@@ -274,7 +274,7 @@ export function ExamScreen({
           </button>
         ) : (
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span style={{ fontSize: 13, color: 'var(--ink)' }}>Are you sure? Please ensure you have submitted the form first.</span>
+            <span style={{ fontSize: 13, color: 'var(--danger)', fontWeight: 'bold' }}>Are you sure? Please ensure you have submitted the form first.</span>
             <button
               onClick={() => { setConfirmOpen(false); onSubmit(); }}
               disabled={loading}
